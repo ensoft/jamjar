@@ -6,11 +6,29 @@
 
 """Target database."""
 
-__all__ = ("Database", "Target", "Rule", "RuleCall")
+__all__ = ("Database", "Fate", "Target", "Rule", "RuleCall")
 
 
 import collections
+import enum
 import re
+
+
+class Fate(enum.Enum):
+    """All possible target fates in jam."""
+
+    INIT = "init"
+    MAKING = "making"
+    STABLE = "stable"
+    NEWER = "newer"
+    TEMP = "temp"
+    TOUCHED = "touched"
+    MISSING = "missing"
+    NEEDTMP = "needtmp"
+    OLD = "old"
+    UPDATE = "update"
+    NOFIND = "nofind"
+    NOMAKE = "nomake"
 
 
 class Database:
@@ -114,6 +132,22 @@ class Target:
 
         Sequence of targets that this target inherits its timestamp from.
 
+    .. attribute:: binding
+
+        Filesystem path for this target.
+
+    .. attribute:: fate
+
+        Fate of this target in the build.
+
+    .. attribute:: rebuilt
+
+        `True` if this target was rebuilt in the build.
+
+    .. attribute:: rebuild_info
+
+        Further information related to this target being rebuilt.
+
     .. attribute:: variables
 
         OrderedDict of the target specific variables and their values
@@ -132,6 +166,7 @@ class Target:
         self.incs_rev = set()
         self.timestamp = None
         self.binding = None
+        self.fate = None
         self.rebuilt = False
         self.rebuild_info = RebuildInfo()
         self.timestamp_chain = None
@@ -197,6 +232,13 @@ class Target:
     def set_binding(self, binding):
         """Set the file binding for this target"""
         self.binding = binding
+
+    def set_fate(self, fate):
+        """Set the fate of this target"""
+        # Fate is output by multiple debug modes, so it's worth checking for
+        # consistency.
+        assert self.fate is None or self.fate is fate
+        self.fate = fate
 
     def set_rebuilt(self):
         """Mark this target as having been rebuilt"""

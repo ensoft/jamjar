@@ -318,6 +318,8 @@ class TargetSubmode(_BaseCmd):
         else:
             print("timestamp:", self.target.timestamp)
         print("binding:", self.target.binding)
+        if self.target.fate is not None:
+            print("fate:", self.target.fate.value)
         print("rebuilt:", self.target.rebuilt)
         if self.target.rebuilt:
             print("    rebuilt reason:", self.target.rebuild_info.reason)
