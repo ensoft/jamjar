@@ -1,8 +1,8 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # test_query.py - Query module tests
 #
 # November 2015, Phil Connell
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """Database query tests."""
 
@@ -25,10 +25,8 @@ class DependencyTest(unittest.TestCase):
         "c": ["e"],
         "d": ["f"],
         "e": ["f"],
-
         "p": ["q"],
         "q": ["r"],
-
         "x": ["y", "z"],
         # Set up a dep between groups to test filtering of duplicates in the
         # deps() function.
@@ -37,11 +35,7 @@ class DependencyTest(unittest.TestCase):
 
     # N.B. the chain of deps/incs y -> q -> r -> c, so the 'x' hierarchy of
     # targets has two incs into the 'a' hierarchy (that chain and z -> b).
-    _incs = {
-        "y": ["q", "b"],
-        "z": ["b"],
-        "r": ["c"]
-    }
+    _incs = {"y": ["q", "b"], "z": ["b"], "r": ["c"]}
 
     def setUp(self):
         self._db = database.Database()
@@ -82,86 +76,88 @@ class DependencyTest(unittest.TestCase):
     def test_all_deps_bf(self):
         """Test the breadth-first all_deps function."""
         deps = query.all_deps_bf(self._targets["x"])
-        self._check_result(deps, [
-            # x
-            "y", "z",
-            # x.y
-            "d", "r", "e",
-            # x.z
-            "d", "e",
-            # x.y.d
-            "f",
-            # x.y.r
-            "e",
-            # x.y.e
-            "f",
-            # x.z.d
-            "f",
-            # x.z.e
-            "f",
-            # x.y.d.f
-            # x.y.r.e
-            "f",
-            # x.y.e.f
-            # x.z.d.f
-            # x.z.e.f
-        ])
+        self._check_result(
+            deps,
+            [
+                # x
+                "y",
+                "z",
+                # x.y
+                "d",
+                "r",
+                "e",
+                # x.z
+                "d",
+                "e",
+                # x.y.d
+                "f",
+                # x.y.r
+                "e",
+                # x.y.e
+                "f",
+                # x.z.d
+                "f",
+                # x.z.e
+                "f",
+                # x.y.d.f
+                # x.y.r.e
+                "f",
+                # x.y.e.f
+                # x.z.d.f
+                # x.z.e.f
+            ],
+        )
 
     def test_all_deps_df(self):
         """Test the depth-first all_deps function."""
         deps = query.all_deps_df(self._targets["x"])
-        self._check_result(deps, [
-            "y", "d", "f",
-                 "r", "e", "f",
-                 "e", "f",
-            "z", "d", "f",
-                 "e", "f",
-        ])
+        self._check_result(
+            deps, ["y", "d", "f", "r", "e", "f", "e", "f", "z", "d", "f", "e", "f",]
+        )
 
     def test_dep_chains_basic(self):
         """Test the dep_chains function for one chain.""",
         chains = query.dep_chains(self._targets["c"])
-        self._check_chains_result(chains, [
-            ["c", "e", "f"],
-        ])
+        self._check_chains_result(chains, [["c", "e", "f"],])
 
     def test_dep_chains_deeper(self):
         """Test the dep_chains function for multiple chains."""
         chains = query.dep_chains(self._targets["x"])
-        self._check_chains_result(chains, [
-            ["x", "y", "d", "f"],
-            ["x", "y", "r", "e", "f"],
-            ["x", "y", "e", "f"],
-            ["x", "z", "d", "f"],
-            ["x", "z", "e", "f"],
-        ])
+        self._check_chains_result(
+            chains,
+            [
+                ["x", "y", "d", "f"],
+                ["x", "y", "r", "e", "f"],
+                ["x", "y", "e", "f"],
+                ["x", "z", "d", "f"],
+                ["x", "z", "e", "f"],
+            ],
+        )
 
     def test_dep_chains_max_depth(self):
         """Test the max_depth parameter of dep_chains."""
         chains = query.dep_chains(self._targets["x"], max_depth=3)
-        self._check_chains_result(chains, [
-            ["x", "y", "d"],
-            ["x", "y", "r"],
-            ["x", "y", "e"],
-            ["x", "z", "d"],
-            ["x", "z", "e"],
-        ])
+        self._check_chains_result(
+            chains,
+            [
+                ["x", "y", "d"],
+                ["x", "y", "r"],
+                ["x", "y", "e"],
+                ["x", "z", "d"],
+                ["x", "z", "e"],
+            ],
+        )
 
         chains = query.dep_chains(self._targets["x"], max_depth=2)
-        self._check_chains_result(chains, [
-            ["x", "y"],
-            ["x", "z"],
-        ])
+        self._check_chains_result(chains, [["x", "y"], ["x", "z"],])
 
-
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Helpers
     #
 
     def _check_result(self, got_targets, expected_names):
         """Check that a sequence of targets has the expected names."""
-        expected_targets = [self._db.get_target(name)
-                            for name in expected_names]
+        expected_targets = [self._db.get_target(name) for name in expected_names]
         self.assertEqual(list(got_targets), expected_targets)
 
     def _check_chains_result(self, got_chains, expected_name_chains):
@@ -174,10 +170,7 @@ class DependencyTest(unittest.TestCase):
             tuple(self._db.get_target(name) for name in name_chain)
             for name_chain in expected_name_chains
         }
-        got_chains = {
-            tuple(chain)
-            for chain in got_chains
-        }
+        got_chains = {tuple(chain) for chain in got_chains}
         self.assertEqual(got_chains, expected_chains)
 
     def _get_target(self, name):
@@ -185,4 +178,3 @@ class DependencyTest(unittest.TestCase):
         if name not in self._targets:
             self._targets[name] = self._db.get_target(name)
         return self._targets[name]
-

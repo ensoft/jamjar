@@ -1,8 +1,8 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # test_dd_parser.py - Test for the -dd parser module
 #
 # November 2015, Jonathan Loh
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """dd parser tests tests."""
 
@@ -29,8 +29,7 @@ class DdParserTest(unittest.TestCase):
 
     def test_parse_file(self):
         """Test the file parsing."""
-        self._dd_parser.parse_logfile(
-            os.path.join(self._logdir, "example_dd.log"))
+        self._dd_parser.parse_logfile(os.path.join(self._logdir, "example_dd.log"))
 
         # Check the expected targets are in the db
         targets = list(self._db.find_targets("p"))
@@ -42,6 +41,5 @@ class DdParserTest(unittest.TestCase):
 
         targets = list(self._db.find_targets("a"))
 
-        self.assertEqual(len(targets[0].incs),1)
+        self.assertEqual(len(targets[0].incs), 1)
         self.assertEqual(targets[0].incs[0].name, "b")
-

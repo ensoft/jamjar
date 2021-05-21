@@ -1,17 +1,15 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # _dc.py
 #
 # Parser for the jam 'c' debug flag output - which contains the names of files
 # that cause rebuilds - ie new sources, missing targets
 #
 # November 2015, Zoe Kelly
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """jam -dc output parser"""
 
-__all__ = (
-    "DCParser",
-)
+__all__ = ("DCParser",)
 
 
 from ._base import BaseParser
@@ -43,8 +41,7 @@ class DCParser(BaseParser):
         for line in lines:
             # Are there a series of timestamp lines to parse?
             if self._timestamp_chain_follows:
-                while line.split(maxsplit=1)[1].startswith(
-                                                "inherits timestamp from"):
+                while line.split(maxsplit=1)[1].startswith("inherits timestamp from"):
                     self._parse_timestamp_line(line)
                     try:
                         line = next(lines)
@@ -88,24 +85,24 @@ class DCParser(BaseParser):
         # First two words of the reason is enough to determine the target's
         # fate.
         reason_start = words[2:4]
-        if reason_start == ["it", "is"]: # ... older than <tgt>
+        if reason_start == ["it", "is"]:  # ... older than <tgt>
             # OUTDATED
             assert words[4:6] == ["older", "than"]
             reason_target = self._target_from_quoted_name(words[6])
             rebuilt_target.set_rebuilt_dep(reason_target)
             self._expect_timestamp_chain(reason_target)
-        elif reason_start[0] == "dependency": # ... <tgt> was updated
+        elif reason_start[0] == "dependency":  # ... <tgt> was updated
             # UPDATE
             assert words[4:6] == ["was", "updated"]
             reason_target = self._target_from_quoted_name(words[3])
             rebuilt_target.set_rebuilt_dep(reason_target)
-        elif reason_start == ["it", "was"]: # ... mentioned with '-t'
+        elif reason_start == ["it", "was"]:  # ... mentioned with '-t'
             # TOUCHED
             pass
-        elif reason_start == ["it", "doesn't"]: # ... exist
+        elif reason_start == ["it", "doesn't"]:  # ... exist
             # MISSING
             pass
-        elif reason_start == ["it", "depends"]: # ... on newer <tgt>
+        elif reason_start == ["it", "depends"]:  # ... on newer <tgt>
             # NEEDTMP
             assert words[4:6] == ["on", "newer"]
             reason_target = self._target_from_quoted_name(words[6])
@@ -122,4 +119,3 @@ class DCParser(BaseParser):
         child_target = self._target_from_quoted_name(words[4])
         assert not chain or parent_target is chain[-1]
         chain.append(child_target)
-

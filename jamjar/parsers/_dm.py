@@ -1,4 +1,4 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # _dm.py
 #
 # Parser for the jam 'm' debug flag output - which contains details of
@@ -6,13 +6,11 @@
 # bindings.
 #
 # November 2015, Antony Wallace
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """jam -dm output parser"""
 
-__all__ = (
-    "DMParser",
-)
+__all__ = ("DMParser",)
 
 import re
 import logging
@@ -32,12 +30,13 @@ class DMParser(BaseParser):
         Name of this parser.
 
     """
+
     def __init__(self, db):
         self.db = db
         self.name = "jam -dm parser"
         # Compile the regular expressions here for speed
         self.made_re = re.compile("^made[+*]?\s+([a-z]+)\s+(.+)")
-        self.make_re = re.compile("^make\s+--\s+(.+)");
+        self.make_re = re.compile("^make\s+--\s+(.+)")
         self.time_re = re.compile("^time\s+--\s+(.+):\s+(.+)")
         self.bind_re = re.compile("^bind\s+--\s+(.+):\s+(.+)")
         self.logger = logging.getLogger()
@@ -54,10 +53,10 @@ class DMParser(BaseParser):
             print("Unable to open file %s" % filename)
             raise
         else:
-             # Read each line in from the logfile
-             for line in f:
-                 self.parse_line(line)
-             f.close()
+            # Read each line in from the logfile
+            for line in f:
+                self.parse_line(line)
+            f.close()
 
     def parse_line(self, line):
         """Read the supplied line from a jam debug log file and parse it
@@ -77,17 +76,17 @@ class DMParser(BaseParser):
 
     def parse_make_line(self, line):
         # Get the target name
-        m = self.make_re.match(line);
+        m = self.make_re.match(line)
         if m:
-            target_name = m.group(1);
+            target_name = m.group(1)
             logging.debug("Parsing a make line for target %s" % target_name)
-            target = self.db.get_target(target_name);
+            target = self.db.get_target(target_name)
 
-           # Set the 'made' flag on the target
+        # Set the 'made' flag on the target
 
     def parse_time_line(self, line):
         # Get the target name and the timestamp
-        m = self.time_re.match(line);
+        m = self.time_re.match(line)
         if m:
             target_name = m.group(1)
             timestamp = m.group(2)
@@ -122,7 +121,11 @@ class DMParser(BaseParser):
             target = self.db.get_target(target_name)
 
             # Set the rebuilt flag
-            if update == "update" or update == "missing" or update == "old" or update == "newer":
+            if (
+                update == "update"
+                or update == "missing"
+                or update == "old"
+                or update == "newer"
+            ):
                 target.set_rebuilt()
                 target.set_rebuilt_reason(update)
-

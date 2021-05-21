@@ -1,12 +1,13 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # ui_dummy.py - Interactive UI test with stubbed database
 #
 # November 2015, Zoe Kelly
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 import re, collections
 
 import jamjar.ui as ui
+
 
 class Database:
     """Database of jam targets."""
@@ -16,7 +17,7 @@ class Database:
 
     def __init__(self):
         self._targets = collections.OrderedDict()
-        self.target_list = ["Target1","Target2","Target3", "Target4"]
+        self.target_list = ["Target1", "Target2", "Target3", "Target4"]
         for name in self.target_list:
             target = Target(name)
             self._targets[name] = target
@@ -34,7 +35,7 @@ class Target:
     def __repr__(self):
         return "{}({})".format(type(self).__name__, self.name)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     database = Database()
     ui.UI(database).cmdloop()
-

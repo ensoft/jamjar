@@ -1,17 +1,12 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # database.py - Database module
 #
 # November 2015, Phil Connell
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """Target database."""
 
-__all__ = (
-    "Database",
-    "Target",
-    "Rule",
-    "RuleCall"
-)
+__all__ = ("Database", "Target", "Rule", "RuleCall")
 
 
 import collections
@@ -30,9 +25,9 @@ class Database:
         self._rules = collections.OrderedDict()
 
     def __repr__(self):
-        return "{}({} targets, {} rules)".format(type(self).__name__,
-                                                 len(self._targets),
-                                                 len(self._rules))
+        return "{}({} targets, {} rules)".format(
+            type(self).__name__, len(self._targets), len(self._rules)
+        )
 
     def get_target(self, name):
         """Get a target with a given name, creating it if necessary."""
@@ -174,8 +169,7 @@ class Target:
         # For now, just strip out most of the grist.
         grist, filename = self._grist_and_filename()
         if grist.count("!") > 1:
-            brief_grist = "{}!{}!...>".format(
-                *grist.split("!", maxsplit=2)[:2])
+            brief_grist = "{}!{}!...>".format(*grist.split("!", maxsplit=2)[:2])
         else:
             brief_grist = grist
         return brief_grist + filename
@@ -235,13 +229,15 @@ class RebuildInfo:
     """
     Class containing information related to rebuilds
     """
+
     def __init__(self):
         self.reason = None
         self.dep = None
 
     def __repr__(self):
         return "{}(reason={}, dep={})".format(
-            type(self).__name__, self.reason, self.dep)
+            type(self).__name__, self.reason, self.dep
+        )
 
 
 class Rule:
@@ -257,6 +253,7 @@ class Rule:
         List of RuleCalls for this rule
 
     """
+
     def __init__(self, name):
         self.name = name
         self.calls = list()
@@ -288,6 +285,7 @@ class RuleCall:
         Each argument is a list of Target objects.
 
     """
+
     def __init__(self, rule, db, arg_list):
         self.rule = rule
         self.caller = None
@@ -353,4 +351,3 @@ class RuleCall:
         Get all elements passed as 3rd or higher arg
         """
         return self.args[2:]
-

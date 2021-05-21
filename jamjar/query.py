@@ -1,8 +1,8 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # query.py - Database query module
 #
 # November 2015, Phil Connell
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """Target query functions."""
 
@@ -31,9 +31,7 @@ def deps(target):
     # If X includes Y, all dependencies of Y are dependencies of X. Also need
     # to remove duplicates.
     seen = set(target.deps)
-    inc_deps = (dep
-                for inc in target.incs
-                for dep in inc.deps)
+    inc_deps = (dep for inc in target.incs for dep in inc.deps)
     for dep in inc_deps:
         if dep not in seen:
             seen.add(dep)
@@ -88,7 +86,8 @@ def dep_chains(target, *, max_depth=0, include_target=None):
                 extended_chains.extend(
                     chain + [dep]
                     for dep in deps(chain[-1])
-                    if include_target is None or include_target(dep))
+                    if include_target is None or include_target(dep)
+                )
         chains = extended_chains
 
 
@@ -159,4 +158,3 @@ def all_deps_df(target):
         current = stack.pop()
         yield current
         stack.extend(rev_deps(current))
-

@@ -1,8 +1,8 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # test_database.py - Database modul tests
 #
 # November 2015, Phil Connell
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """Database tests."""
 
@@ -47,7 +47,8 @@ class DatabaseTest(unittest.TestCase):
         def check_find(name_regex, expected_names):
             self.assertEqual(
                 list(self._db.find_targets(name_regex)),
-                [self._db.get_target(name) for name in expected_names])
+                [self._db.get_target(name) for name in expected_names],
+            )
 
         check_find("foo", ["foo", "foo1", "foo2", "foo-bar"])
         check_find("foo\d", ["foo1", "foo2"])
@@ -125,11 +126,9 @@ class TargetTest(unittest.TestCase):
     def test_brief_name(self):
         """Test the brief name method."""
         tgt = database.Target("<blah!grist!ablah!bblah>some_filename xyz.foo")
-        self.assertEqual(tgt.brief_name(),
-                         "<blah!grist!...>some_filename xyz.foo")
+        self.assertEqual(tgt.brief_name(), "<blah!grist!...>some_filename xyz.foo")
 
-
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Helpers
     #
 
@@ -148,4 +147,3 @@ class TargetTest(unittest.TestCase):
     def _check_incs_rev(self, target, expected):
         """Check that the incs_rev attribute of target is as expected."""
         self.assertEqual(set(target.incs_rev), expected)
-
