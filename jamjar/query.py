@@ -104,7 +104,7 @@ def rebuild_chains(target):
     while True:
         extended_chains = []
         for chain in chains:
-            for dep in deps_rebuilt(chain[-1]):
+            for dep in deps_rebuilt(chain[-1][0]):
                 extended_chains.append(chain + _basic_rebuild_chain(dep))
         if extended_chains:
             chains = extended_chains
@@ -117,14 +117,15 @@ def _basic_rebuild_chain(target):
     """
     Get a rebuild chain based purely on 'rebuild info' from Jam.
     """
-    chain = [target]
+    chain = [(target, None)]
     current = target
     while True:
-        current = current.rebuild_info.dep
+        reason = current.rebuild_reason
+        current = current.rebuild_reason_target
         if current is None:
             break
         else:
-            chain.append(current)
+            chain.append((current, reason))
     return chain
 
 

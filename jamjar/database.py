@@ -31,6 +31,20 @@ class Fate(enum.Enum):
     NOMAKE = "nomake"
 
 
+class RebuildReason(enum.Enum):
+    """All possible target fates in jam."""
+
+    TOUCHED = "mentioned with '-t'"
+    ACTION = "build action was updated"
+    MISSING = "it doesn't exist"
+    NEEDTMP = "it depends on newer"
+    OUTDATED = "it is older than"
+    UPDATED_INCLUDE_OF_INCLUDE = "inclusion of inclusion was updated"
+    UPDATED_INCLUDE_OF_DEPENDENCY = "inclusion of dependency was updated"
+    UPDATED_INCLUDE = "inclusion was updated"
+    UPDATED_DEPENDENCY = "dependency was updated"
+
+
 class Database:
     """Database of jam targets."""
 
@@ -140,13 +154,13 @@ class Target:
 
         Fate of this target in the build.
 
-    .. attribute:: rebuilt
+    .. attribute:: rebuild_reason
 
-        `True` if this target was rebuilt in the build.
+        Why this target was rebuilt (or `None` if it wasn't).
 
-    .. attribute:: rebuild_info
+    .. attribute:: rebuild_reason_target
 
-        Further information related to this target being rebuilt.
+        Related target, if applicable for the reason.
 
     .. attribute:: variables
 
@@ -164,11 +178,13 @@ class Target:
         self.deps_rev = set()
         self.incs = []
         self.incs_rev = set()
+        self.newer_than = []
+        self.older_than = set()
         self.timestamp = None
         self.binding = None
         self.fate = None
-        self.rebuilt = False
-        self.rebuild_info = RebuildInfo()
+        self.rebuild_reason = None
+        self.rebuild_reason_target = None
         self.timestamp_chain = None
         self.variables = collections.OrderedDict()
         self.rule_calls = collections.OrderedDict()
@@ -187,17 +203,21 @@ class Target:
 
     def add_dependency(self, other):
         """Record the target 'other' as depended on by this target."""
-        # Dependencies may be parsed more than once, but only one copy allowed
         if self not in other.deps_rev:
             self.deps.append(other)
             other.deps_rev.add(self)
 
     def add_inclusion(self, other):
         """Record the target 'other' as included by this target."""
-        # Inclusions may be parsed more than once, but only one copy allowed
         if self not in other.incs_rev:
             self.incs.append(other)
             other.incs_rev.add(self)
+
+    def add_i_am_newer_than(self, older):
+        """Record that this target is newer than the target 'older'."""
+        if self not in older.older_than:
+            self.newer_than.append(older)
+            older.older_than.add(self)
 
     def brief_name(self):
         """Return a summarised version of this target's name."""
@@ -217,6 +237,11 @@ class Target:
         """Return this target's grist."""
         return self._grist_and_filename()[0]
 
+    @property
+    def rebuilt(self):
+        """`True` if this target was rebuilt, `False` otherwise."""
+        return self.rebuild_reason is not None
+
     def _grist_and_filename(self):
         """Split this target's name into a grist and filename."""
         if self.name.startswith("<"):
@@ -235,25 +260,15 @@ class Target:
 
     def set_fate(self, fate):
         """Set the fate of this target"""
-        # Fate is output by multiple debug modes, so it's worth checking for
-        # consistency.
-        assert self.fate is None or self.fate is fate
+        # Might end up overwriting an old value if the given log contains debug
+        # from a couple of related runs of jam (e.g. in a multiphase build). So
+        # don't check...
         self.fate = fate
 
-    def set_rebuilt(self):
-        """Mark this target as having been rebuilt"""
-        self.rebuilt = True
-
-    def set_rebuilt_reason(self, reason):
-        """Set the rebuild reason of this target"""
-        self.rebuild_info.reason = reason
-
-    def set_rebuilt_dep(self, dep):
-        """ Mark this target as having been rebuilt due to dependency
-            being updated """
-        self.rebuilt = True
-        self.rebuild_info.reason = "Dependency updated"
-        self.rebuild_info.dep = dep
+    def set_rebuild_reason(self, reason, related_target=None):
+        """Set the rebuild reason for this target."""
+        self.rebuild_reason = reason
+        self.rebuild_reason_target = related_target
 
     def set_var_value(self, variable_name, values):
         """ Set the target specific variable 'variable_name' on this target to
@@ -265,21 +280,6 @@ class Target:
         if target_type not in self.rule_calls:
             self.rule_calls[target_type] = list()
         self.rule_calls[target_type].append(rule_call)
-
-
-class RebuildInfo:
-    """
-    Class containing information related to rebuilds
-    """
-
-    def __init__(self):
-        self.reason = None
-        self.dep = None
-
-    def __repr__(self):
-        return "{}(reason={}, dep={})".format(
-            type(self).__name__, self.reason, self.dep
-        )
 
 
 class Rule:

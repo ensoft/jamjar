@@ -293,6 +293,10 @@ class TargetSubmode(_BaseCmd):
         self._print_targets(self.target.incs)
         print("included by:")
         self._print_targets(self.target.incs_rev)
+        print("newer than:")
+        self._print_targets(self.target.newer_than)
+        print("older than:")
+        self._print_targets(self.target.older_than)
         print("variables:")
         for key in self.target.variables:
             print("    {} = {}".format(key, self.target.variables[key]))
@@ -320,11 +324,9 @@ class TargetSubmode(_BaseCmd):
         print("binding:", self.target.binding)
         if self.target.fate is not None:
             print("fate:", self.target.fate.value)
-        print("rebuilt:", self.target.rebuilt)
-        if self.target.rebuilt:
-            print("    rebuilt reason:", self.target.rebuild_info.reason)
-            if self.target.rebuild_info.dep is not None:
-                print("    dependency:", self.target.rebuild_info.dep.name)
+        print("rebuild reason:", self.target.rebuild_reason.value)
+        if self.target.rebuild_reason_target:
+            print("    due to:", self.target.rebuild_reason_target.name)
 
     def do_alternative_grists(self, arg):
         """
@@ -352,7 +354,13 @@ class TargetSubmode(_BaseCmd):
 
     def _print_chain(self, chain):
         """Print a sequence of targets forming a dependency chain."""
-        print(" -> ".join(target.name for target in chain))
+        links = []
+        for target, reason in chain:
+            if reason is None:
+                links.append(target.name)
+            else:
+                links.append(f"{target.name} ({reason.value})")
+        print("\n -> ".join(links))
 
     def _print_targets(self, targets):
         """Print a sequence of targets."""
