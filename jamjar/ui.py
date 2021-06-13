@@ -324,9 +324,10 @@ class TargetSubmode(_BaseCmd):
         print("binding:", self.target.binding)
         if self.target.fate is not None:
             print("fate:", self.target.fate.value)
-        print("rebuild reason:", self.target.rebuild_reason.value)
-        if self.target.rebuild_reason_target:
-            print("    due to:", self.target.rebuild_reason_target.name)
+        if self.target.rebuild_reason is not None:
+            print("rebuild reason:", self.target.rebuild_reason.value)
+            if self.target.rebuild_reason_target:
+                print("    due to:", self.target.rebuild_reason_target.name)
 
     def do_alternative_grists(self, arg):
         """
