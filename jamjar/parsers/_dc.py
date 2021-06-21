@@ -11,6 +11,7 @@
 
 __all__ = ("DCParser",)
 
+import collections
 import re
 from typing import Iterable, Iterator, Optional
 
@@ -43,7 +44,7 @@ class DCParser(BaseParser):
         This is separated out from parse_logfile for testing purposes.
 
         """
-        lines = iter(lines)
+        lines = collections.deque(lines)
         while True:
             line = self._consume_line(lines)
             if line is None:
@@ -70,9 +71,13 @@ class DCParser(BaseParser):
             #
             # Either way we're now on to some form of "rebuilding" line, or a
             # line that's not interesting at all.
-            self._parse_rebuilding_line(line)
+            rebuilding = self._parse_rebuilding_line(line)
 
-    def _consume_line(self, lines: Iterator[str]) -> Optional[str]:
+            # May have some timestamp inheritance info to follow.
+            if rebuilding:
+                self._parse_inherits_timestamp_lines(lines)
+
+    def _consume_line(self, lines: collections.deque[str]) -> Optional[str]:
         """
         Read the next line.
 
@@ -82,11 +87,20 @@ class DCParser(BaseParser):
 
         """
         try:
-            line = next(lines)
-        except StopIteration:
+            line = lines.popleft()
+        except IndexError:
             return None
         else:
             return line.strip()
+
+    def _regurgitate_line(self, lines: collections.deque[str], line: str) -> None:
+        """
+        Express regret for eating a line,
+
+        Makes it available for the next `_consume_line` call.
+
+        """
+        lines.appendleft(line)
 
     def _is_fate(self, line: str) -> bool:
         """Does the given line report a target's fate?"""
@@ -126,16 +140,22 @@ class DCParser(BaseParser):
     _rebuilding_target_regex = re.compile(r'[^"]+\s+"([^"]+)"')
     _rebuilding_reason_regex = re.compile(r'([^"]+)\s+"([^"]+)"')
 
-    def _parse_rebuilding_line(self, line) -> None:
+    def _parse_rebuilding_line(self, line) -> bool:
         """
         Attempt to parse "rebuilding" information.
 
         Update the database with any interesting information found.
 
+        Return `True` if anything was parsed.
+
         """
-        if line.startswith("Rebuilding ") or line.startswith(
-            "Inclusions rebuilding for "
+        if not (
+            line.startswith("Rebuilding ")
+            or line.startswith("Inclusions rebuilding for ")
         ):
+            return False
+
+        else:
             # e.g.
             #
             # Rebuilding "<foo>bar.h": it is older than "<baz>quux.h"
@@ -190,3 +210,28 @@ class DCParser(BaseParser):
                 )
             else:
                 raise NotImplementedError(f"{reason=}, {target=}, {related_target=}")
+
+            return True
+
+    _inherits_timestamp_regex = re.compile(
+        r'"([^"]+)"\s+inherits timestamp from\s+"([^"]+)"'
+    )
+
+    def _parse_inherits_timestamp_lines(self, lines: collections.deque[str]) -> None:
+        """
+        Parse a series of timestamp inheritance lines.
+
+        *Only* timestamp inheritance lines are consumed. Any other line is left
+        to be consumed by the next `_consume_line` call.
+
+        """
+        while True:
+            line = self._consume_line(lines)
+            m = self._inherits_timestamp_regex.search(line)
+            if m is None:
+                self._regurgitate_line(lines, line)
+                return
+
+            target = self.db.get_target(m.group(1))
+            source = self.db.get_target(m.group(2))
+            target.set_inherits_timestamp_from(source)

@@ -142,10 +142,6 @@ class Target:
 
         Set of targets that include this target.
 
-    .. attribute:: timestamp_chain
-
-        Sequence of targets that this target inherits its timestamp from.
-
     .. attribute:: binding
 
         Filesystem path for this target.
@@ -181,11 +177,12 @@ class Target:
         self.newer_than = []
         self.older_than = set()
         self.timestamp = None
+        self.inherits_timestamp_from = None
+        self.bequeaths_timestamp_to = set()
         self.binding = None
         self.fate = None
         self.rebuild_reason = None
         self.rebuild_reason_target = None
-        self.timestamp_chain = None
         self.variables = collections.OrderedDict()
         self.rule_calls = collections.OrderedDict()
 
@@ -269,6 +266,15 @@ class Target:
         """Set the rebuild reason for this target."""
         self.rebuild_reason = reason
         self.rebuild_reason_target = related_target
+
+    def set_inherits_timestamp_from(self, source):
+        """Record that this target inherits its timestamp from another."""
+        assert (
+            self.inherits_timestamp_from is None
+            or self.inherits_timestamp_from == source
+        )
+        self.inherits_timestamp_from = source
+        source.bequeaths_timestamp_to.add(self)
 
     def set_var_value(self, variable_name, values):
         """ Set the target specific variable 'variable_name' on this target to

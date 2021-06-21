@@ -129,6 +129,21 @@ def _basic_rebuild_chain(target):
     return chain
 
 
+def timestamp_inheritance_chain(target):
+    """
+    Return the chain of targets that this target inherits its timestamp from.
+    """
+    if target.inherits_timestamp_from is None:
+        return None
+
+    chain = []
+    current = target
+    while current is not None:
+        chain.append(current)
+        current = current.inherits_timestamp_from
+    return chain
+
+
 def all_deps_bf(target):
     """
     Iterator that yields all dependencies of a target, breadth-first.

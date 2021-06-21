@@ -281,6 +281,10 @@ class TargetSubmode(_BaseCmd):
         """Show Jam's view on why this target was rebuilt."""
         for chain in query.rebuild_chains(self.target):
             self._print_chain(chain)
+            timestamp_chain = query.timestamp_inheritance_chain(chain[-1][0])
+            if timestamp_chain is not None:
+                print("")
+                self._print_timestamp_chain(timestamp_chain)
 
     def do_show(self, arg):
         """Dump all available meta-data for this target."""
@@ -312,15 +316,15 @@ class TargetSubmode(_BaseCmd):
             print("higher ordered target in:")
             for rule_name in self.target.rule_call["other"]:
                 print("    {}".format(rule_name))
-        if (
-            self.target.timestamp_chain is not None
-            and len(self.target.timestamp_chain) > 0
-        ):
-            print("timestamp:", self.target.timestamp_chain[-1].timestamp)
-            print("timestamp inherited from:")
-            self._print_targets(self.target.timestamp_chain)
-        else:
-            print("timestamp:", self.target.timestamp)
+        print("timestamp:", self.target.timestamp)
+        if self.target.inherits_timestamp_from is not None:
+            print("inherits timestamp from:", self.target.inherits_timestamp_from)
+        if self.target.bequeaths_timestamp_to:
+            print("bequeaths timestamp to:")
+            for inheritor in sorted(
+                self.target.bequeaths_timestamp_to, key=lambda tgt: tgt.name
+            ):
+                print("    {}".format(inheritor))
         print("binding:", self.target.binding)
         if self.target.fate is not None:
             print("fate:", self.target.fate.value)
@@ -361,6 +365,12 @@ class TargetSubmode(_BaseCmd):
                 links.append(target.name)
             else:
                 links.append(f"{target.name} ({reason.value})")
+        print("\n -> ".join(links))
+
+    def _print_timestamp_chain(self, chain):
+        """Print a sequence of targets forming a timestamp inheritance chain."""
+        print("{} inherits its timestamp from:".format(chain[0]))
+        links = (target.name for target in chain[1:])
         print("\n -> ".join(links))
 
     def _print_targets(self, targets):
