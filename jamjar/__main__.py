@@ -1,8 +1,7 @@
-
 # __main__.py - Main module
 #
 # November 2015, Phil Connell
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """Main entrypoint!"""
 
@@ -17,13 +16,16 @@ from . import ui
 
 def parse_args(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--logfile",
-                        help="Path to the jam log file to parse",
-                        required=True)
-    parser.add_argument("-d", "--parsers",
-                        help="Jam debug options to run parsers for",
-                        required=False,
-                        default="dmc")
+    parser.add_argument(
+        "-f", "--logfile", help="Path to the jam log file to parse", required=True
+    )
+    parser.add_argument(
+        "-d",
+        "--parsers",
+        help="Jam debug options to run parsers for",
+        required=False,
+        default="dmc",
+    )
     return parser.parse_args(argv)
 
 
@@ -42,7 +44,6 @@ if __name__ == "__main__":
         # Exit gracefully.
         pass
     # Uncomment for debugging.
-    #except Exception:
+    # except Exception:
     #    import traceback; traceback.print_exc()
     #    import pdb; pdb.post_mortem()
-

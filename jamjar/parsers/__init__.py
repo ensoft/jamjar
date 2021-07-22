@@ -1,14 +1,12 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # __init__.py - Parsers package root
 #
 # December 2015, Antony Wallace
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """Parsers for Jam debug output."""
 
-__all__ = (
-    "parse",
-)
+__all__ = ("parse",)
 
 
 from ._dd import DDParser
@@ -28,10 +26,10 @@ def parse(db, logfile, parsers):
 
     """
     parser_clses = {
-        "d":DDParser,
-        "c":DCParser,
-        "3":DMParser,
-        "5":D5Parser,
+        "d": DDParser,
+        "c": DCParser,
+        "3": DMParser,
+        "5": D5Parser,
     }
 
     # Get which parsers to run from the command line option
@@ -46,7 +44,7 @@ def parse(db, logfile, parsers):
     for i in range(len(parsers)):
         if parsers[i].isdigit():
             # Handle numerical options
-            if (i > 0 and parsers[i-1] == "+"):
+            if i > 0 and parsers[i - 1] == "+":
                 # Specific numerical level given
                 if parsers[i] in parser_clses:
                     parsers_to_run.add(parser_clses[parsers[i]])
@@ -54,7 +52,7 @@ def parse(db, logfile, parsers):
                     print("No parser exists for option +{}".format(parsers[i]))
             else:
                 # Run all available parsers up to given number
-                for num in range(2,int(parsers[i])+1):
+                for num in range(2, int(parsers[i]) + 1):
                     if str(num) in parser_clses:
                         parsers_to_run.add(parser_clses[str(num)])
                     else:
@@ -66,8 +64,6 @@ def parse(db, logfile, parsers):
             elif parsers[i] != "+":
                 print("No parser exists for option {}".format(parsers[i]))
 
-
     for parser_cls in parsers_to_run:
         print("Running {}".format(parser_cls.__name__))
         parser_cls(db).parse_logfile(logfile)
-

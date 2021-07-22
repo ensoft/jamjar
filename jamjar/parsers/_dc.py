@@ -1,18 +1,21 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # _dc.py
 #
 # Parser for the jam 'c' debug flag output - which contains the names of files
 # that cause rebuilds - ie new sources, missing targets
 #
 # November 2015, Zoe Kelly
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """jam -dc output parser"""
 
-__all__ = (
-    "DCParser",
-)
+__all__ = ("DCParser",)
 
+import collections
+import re
+from typing import Iterable, Iterator, Optional
+
+from .. import database
 
 from ._base import BaseParser
 
@@ -20,106 +23,215 @@ from ._base import BaseParser
 class DCParser(BaseParser):
     """Parser for '-dc' debug output."""
 
-    # Are a series of 'inherits timestamp' lines expected next?
-    _timestamp_chain_follows = False
-    # Target that owns the following timestamp chain.
-    _timestamp_chain_owner = None
+    # See DEBUG_CAUSES in jam for the relevant debug output.
 
-    def parse_logfile(self, filename):
+    _causes_fates = {
+        database.Fate.NEWER.value,
+        database.Fate.TEMP.value,
+        database.Fate.TOUCHED.value,
+        database.Fate.MISSING.value,
+    }
+
+    def parse_logfile(self, filename: str):
         """Parse '-dc' debug output from the file at the given path."""
         with open(filename, errors="ignore") as f:
             self._parse(f)
 
-    def _parse(self, lines):
+    def _parse(self, lines: Iterable[str]):
         """
-        Parse debug from an iterable of lines.
+        Parse debug from jam log output.
 
         This is separated out from parse_logfile for testing purposes.
 
         """
-        # Make sure we have an iterator so it can be advanced manually when
-        # required.
-        lines = iter(lines)
-        for line in lines:
-            # Are there a series of timestamp lines to parse?
-            if self._timestamp_chain_follows:
-                while line.split(maxsplit=1)[1].startswith(
-                                                "inherits timestamp from"):
-                    self._parse_timestamp_line(line)
-                    try:
-                        line = next(lines)
-                    except StopIteration:
-                        break
-                self._timestamp_chain_follows = False
-                self._timestamp_chain_owner = None
+        lines = collections.deque(lines)
+        while True:
+            line = self._consume_line(lines)
+            if line is None:
+                break
 
-            line = line.strip()
-            if line.startswith("Rebuilding"):
-                self._parse_rebuilding_line(line)
+            target = self._parse_fate_line(line)
+            if target is not None:
+                line = self._consume_line(lines)
+                if line is None:
+                    break
 
-    def _strip_quoted_target(self, word):
-        """Strip quotes from a target name."""
-        if word[-1] == ":":
-            word = word[:-1]
-        assert word[0] == word[-1] == '"'
-        return word[1:-1]
+                older_target = self._parse_newer_than_line(line)
+                if older_target is not None:
+                    # Record the info and go back to the top; we've consumed
+                    # all of the inter-related lines.
+                    target.add_i_am_newer_than(older_target)
+                    continue
 
-    def _target_from_quoted_name(self, word):
-        """Obtain a target object from a quoted name."""
-        name = self._strip_quoted_target(word)
-        return self.db.get_target(name)
+            # Two possibilities at this point:
+            #   - Still processing the first line from this iteration; it was
+            #     not fate-related
+            #   - First line did give fate information, but the second line
+            #     wasn't giving related "newer than" information.
+            #
+            # Either way we're now on to some form of "rebuilding" line, or a
+            # line that's not interesting at all.
+            rebuilding = self._parse_rebuilding_line(line)
 
-    def _expect_timestamp_chain(self, target):
-        """Set up state for handling a timestamp chain on target next."""
-        # Only parse the first chain for any given target.
-        if target.timestamp_chain is None:
-            target.timestamp_chain = []
-            self._timestamp_chain_follows = True
-            self._timestamp_chain_owner = target
+            # May have some timestamp inheritance info to follow.
+            if rebuilding:
+                self._parse_inherits_timestamp_lines(lines)
 
-    def _parse_rebuilding_line(self, line):
-        """Parse a 'Rebuilding "<target>" ...' line."""
-        words = line.split()
-        assert words[0] == "Rebuilding"
+    def _consume_line(self, lines: collections.deque[str]) -> Optional[str]:
+        """
+        Read the next line.
 
-        rebuilt_target = self._target_from_quoted_name(words[1])
-        rebuilt_target.set_rebuilt()
+        - Returns `None` if there's no remaining input.
+        - Otherwise returns the next line with whitespace stripped at the start
+          and end.
 
-        # First two words of the reason is enough to determine the target's
-        # fate.
-        reason_start = words[2:4]
-        if reason_start == ["it", "is"]: # ... older than <tgt>
-            # OUTDATED
-            assert words[4:6] == ["older", "than"]
-            reason_target = self._target_from_quoted_name(words[6])
-            rebuilt_target.set_rebuilt_dep(reason_target)
-            self._expect_timestamp_chain(reason_target)
-        elif reason_start[0] == "dependency": # ... <tgt> was updated
-            # UPDATE
-            assert words[4:6] == ["was", "updated"]
-            reason_target = self._target_from_quoted_name(words[3])
-            rebuilt_target.set_rebuilt_dep(reason_target)
-        elif reason_start == ["it", "was"]: # ... mentioned with '-t'
-            # TOUCHED
-            pass
-        elif reason_start == ["it", "doesn't"]: # ... exist
-            # MISSING
-            pass
-        elif reason_start == ["it", "depends"]: # ... on newer <tgt>
-            # NEEDTMP
-            assert words[4:6] == ["on", "newer"]
-            reason_target = self._target_from_quoted_name(words[6])
-            rebuilt_target.set_rebuilt_dep(reason_target)
-            self._expect_timestamp_chain(reason_target)
+        """
+        try:
+            line = lines.popleft()
+        except IndexError:
+            return None
+        else:
+            return line.strip()
 
-    def _parse_timestamp_line(self, line):
-        """Parse a '<target> inherits timestamp from ...' line."""
-        words = line.split()
-        assert words[1:4] == ["inherits", "timestamp", "from"]
+    def _regurgitate_line(self, lines: collections.deque[str], line: str) -> None:
+        """
+        Express regret for eating a line,
 
-        chain = self._timestamp_chain_owner.timestamp_chain
-        parent_target = self._target_from_quoted_name(words[0])
-        child_target = self._target_from_quoted_name(words[4])
-        assert not chain or parent_target is chain[-1]
-        chain.append(child_target)
+        Makes it available for the next `_consume_line` call.
 
+        """
+        lines.appendleft(line)
+
+    def _is_fate(self, line: str) -> bool:
+        """Does the given line report a target's fate?"""
+        return any(line.startswith(fate_name) for fate_name in self._causes_fates)
+
+    def _parse_fate_line(self, line) -> Optional[database.Target]:
+        """
+        Attempt to parse a target's fate.
+
+        Returns `None` if this wasn't a fate line, or the target whose fate was
+        set otherwise.
+
+        """
+        if not self._is_fate(line):
+            return None
+        else:
+            fate_name, target_name = line.split(maxsplit=1)
+            target = self.db.get_target(target_name)
+            fate = database.Fate(fate_name)
+            target.set_fate(fate)
+            return target
+
+    def _parse_newer_than_line(self, line) -> Optional[database.Target]:
+        """
+        Attempt to parse "newer than" information.
+
+        Returns `None` if this wasn't a "newer than" line, or the *older*
+        target otherwise.
+
+        """
+        if not line.startswith("newer than:"):
+            return None
+        else:
+            older_target_name = line.split(":", maxsplit=1)[1].strip()
+            return self.db.get_target(older_target_name)
+
+    _rebuilding_target_regex = re.compile(r'[^"]+\s+"([^"]+)"')
+    _rebuilding_reason_regex = re.compile(r'([^"]+)\s+"([^"]+)"')
+
+    def _parse_rebuilding_line(self, line) -> bool:
+        """
+        Attempt to parse "rebuilding" information.
+
+        Update the database with any interesting information found.
+
+        Return `True` if anything was parsed.
+
+        """
+        if not (
+            line.startswith("Rebuilding ")
+            or line.startswith("Inclusions rebuilding for ")
+        ):
+            return False
+
+        else:
+            # e.g.
+            #
+            # Rebuilding "<foo>bar.h": it is older than "<baz>quux.h"
+            # Rebuilding "<foo>bar.h": inclusion of dependency "<baz>quux.h" was updated
+            # Rebuilding "<foo>bar.h": build action was updated
+            target_info, reason_info = line.split(":", maxsplit=1)
+            match = self._rebuilding_target_regex.match(target_info)
+            if match is None:
+                raise ValueError(f"Couldn't parse target from {target_info=}")
+            target = self.db.get_target(match.group(1))
+
+            reason_info = reason_info.strip()
+            # Don't need any trailing 'was updated' to disambiguate.
+            reason_info = reason_info.removesuffix("was updated").strip()
+            match = self._rebuilding_reason_regex.match(reason_info)
+            if match is not None:
+                reason = match.group(1)
+                related_target = self.db.get_target(match.group(2))
+            else:
+                reason = reason_info
+                related_target = None
+
+            if reason == "it was mentioned with '-t'":
+                target.set_rebuild_reason(database.RebuildReason.TOUCHED)
+            elif reason == "build action":
+                target.set_rebuild_reason(database.RebuildReason.ACTION)
+            elif reason == "it doesn't exist":
+                target.set_rebuild_reason(database.RebuildReason.MISSING)
+            elif reason == "it depends on newer":
+                target.set_rebuild_reason(
+                    database.RebuildReason.NEEDTMP, related_target
+                )
+            elif reason == "it is older than":
+                target.set_rebuild_reason(
+                    database.RebuildReason.OUTDATED, related_target
+                )
+            elif reason == "inclusion of inclusion":  # ...was updated
+                target.set_rebuild_reason(
+                    database.RebuildReason.UPDATED_INCLUDE_OF_INCLUDE, related_target
+                )
+            elif reason == "inclusion of dependency":  # ...was updated
+                target.set_rebuild_reason(
+                    database.RebuildReason.UPDATED_INCLUDE_OF_DEPENDENCY, related_target
+                )
+            elif reason == "inclusion":  # ...was updated
+                target.set_rebuild_reason(
+                    database.RebuildReason.UPDATED_INCLUDE, related_target
+                )
+            elif reason == "dependency":  # ...was updated
+                target.set_rebuild_reason(
+                    database.RebuildReason.UPDATED_DEPENDENCY, related_target
+                )
+            else:
+                raise NotImplementedError(f"{reason=}, {target=}, {related_target=}")
+
+            return True
+
+    _inherits_timestamp_regex = re.compile(
+        r'"([^"]+)"\s+inherits timestamp from\s+"([^"]+)"'
+    )
+
+    def _parse_inherits_timestamp_lines(self, lines: collections.deque[str]) -> None:
+        """
+        Parse a series of timestamp inheritance lines.
+
+        *Only* timestamp inheritance lines are consumed. Any other line is left
+        to be consumed by the next `_consume_line` call.
+
+        """
+        while True:
+            line = self._consume_line(lines)
+            m = self._inherits_timestamp_regex.search(line)
+            if m is None:
+                self._regurgitate_line(lines, line)
+                return
+
+            target = self.db.get_target(m.group(1))
+            source = self.db.get_target(m.group(2))
+            target.set_inherits_timestamp_from(source)

@@ -1,8 +1,8 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # ui.py - CLI commands module
 #
 # November 2015, Zoe Kelly
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 import cmd, sys, io, pydoc
 
@@ -11,6 +11,7 @@ from . import database, query
 
 class _BaseCmd(cmd.Cmd):
     """Base class for command submodes."""
+
     def __init__(self, paging_on):
         super().__init__()
         self.paging_on = paging_on
@@ -42,7 +43,7 @@ class _BaseCmd(cmd.Cmd):
 
     def precmd(self, line):
         self.start_pager()
-        return (line)
+        return line
 
     def start_pager(self):
         if self.paging_on:
@@ -51,10 +52,10 @@ class _BaseCmd(cmd.Cmd):
 
     def postcmd(self, stop, line):
         self.flush_pager()
-        return (stop)
+        return stop
 
     def flush_pager(self):
-       # Reset
+        # Reset
         sys.stdout = sys.__stdout__
 
         if self.paging_on:
@@ -85,18 +86,16 @@ class _BaseCmd(cmd.Cmd):
         Utility to easily create colored prompt message for modes
         """
         escapes = {
-            "red":"\x1b[31m",
-            "green":"\x1b[32m",
-            "yellow":"\x1b[33m",
-            "blue":"\x1b[34m",
-            "magenta":"\x1b[35m",
-            "cyan":"\x1b[36m",
-            "none":"\x1b[0m",
+            "red": "\x1b[31m",
+            "green": "\x1b[32m",
+            "yellow": "\x1b[33m",
+            "blue": "\x1b[34m",
+            "magenta": "\x1b[35m",
+            "cyan": "\x1b[36m",
+            "none": "\x1b[0m",
         }
         if sys.stdout.isatty():
-            return "({}{}{}) ".format(escapes[color],
-                                      prompt_string,
-                                      escapes["none"])
+            return "({}{}{}) ".format(escapes[color], prompt_string, escapes["none"])
         else:
             return "({}) ".format(prompt_string)
 
@@ -119,15 +118,15 @@ class UI(_BaseCmd):
         if len(target_list) == 0:
             print("No targets found")
         elif len(target_list) == 1:
-            TargetSubmode(target=target_list[0],
-                          paging_on=self.paging_on,
-                          db=self.database).cmdloop()
+            TargetSubmode(
+                target=target_list[0], paging_on=self.paging_on, db=self.database
+            ).cmdloop()
         else:
             target = self._target_selection(target_list)
             if target is not None:
-                TargetSubmode(target=target,
-                              paging_on=self.paging_on,
-                              db=self.database).cmdloop()
+                TargetSubmode(
+                    target=target, paging_on=self.paging_on, db=self.database
+                ).cmdloop()
 
     def do_rebuilt_targets(self, target_string):
         """Get information about targets that were rebuilt matching a regex."""
@@ -139,26 +138,25 @@ class UI(_BaseCmd):
         if len(target_list) == 0:
             print("No targets found")
         elif len(target_list) == 1:
-            TargetSubmode(target=target_list[0],
-                          paging_on=self.paging_on,
-                          db=self.database).cmdloop()
+            TargetSubmode(
+                target=target_list[0], paging_on=self.paging_on, db=self.database
+            ).cmdloop()
         else:
             target = self._target_selection(target_list)
             if target is not None:
-                TargetSubmode(target=target,
-                              paging_on=self.paging_on,
-                              db=self.database).cmdloop()
+                TargetSubmode(
+                    target=target, paging_on=self.paging_on, db=self.database
+                ).cmdloop()
 
     def _target_selection(self, targets):
         for idx, target in enumerate(targets):
-            print("({}) {}".format(idx , target))
+            print("({}) {}".format(idx, target))
         self.flush_pager()
 
         target = None
         while True:
             try:
-                choice = input("Choose target (range 0:{}): ".format(
-                    len(targets) - 1))
+                choice = input("Choose target (range 0:{}): ".format(len(targets) - 1))
             except EOFError:
                 print("")
                 break
@@ -184,15 +182,15 @@ class UI(_BaseCmd):
         if len(rules_list) == 0:
             print("No rules found")
         elif len(rules_list) == 1:
-            RuleSubmode(rule=rules_list[0],
-                        paging_on=self.paging_on,
-                        db=self.database).cmdloop()
+            RuleSubmode(
+                rule=rules_list[0], paging_on=self.paging_on, db=self.database
+            ).cmdloop()
         else:
             rule = self._rule_selection(rules_list)
             if rule is not None:
-                RuleSubmode(rule=rule,
-                            paging_on=self.paging_on,
-                            db=self.database).cmdloop()
+                RuleSubmode(
+                    rule=rule, paging_on=self.paging_on, db=self.database
+                ).cmdloop()
 
     def _rule_selection(self, rules):
         for idx, rule in enumerate(rules):
@@ -202,8 +200,7 @@ class UI(_BaseCmd):
         rule = None
         while True:
             try:
-                choice = input("Choose rule (range 0:{}): ".format(
-                    len(rules) - 1))
+                choice = input("Choose rule (range 0:{}): ".format(len(rules) - 1))
             except EOFError:
                 print("")
                 break
@@ -222,6 +219,7 @@ class UI(_BaseCmd):
 
 class TargetSubmode(_BaseCmd):
     """ Submode to interact with a particular target """
+
     def __init__(self, target, *, paging_on, db=None):
         super().__init__(paging_on)
         self.target = target
@@ -238,9 +236,9 @@ class TargetSubmode(_BaseCmd):
         if len(target_list) == 0:
             print("No targets found")
         elif len(target_list) == 1:
-            TargetSubmode(target=target_list[0],
-                          paging_on=self.paging_on,
-                          db=self.database).cmdloop()
+            TargetSubmode(
+                target=target_list[0], paging_on=self.paging_on, db=self.database
+            ).cmdloop()
             return True
         else:
             target = None
@@ -248,9 +246,9 @@ class TargetSubmode(_BaseCmd):
                 if targ.name == target_string:
                     target = targ
             if target != None:
-                TargetSubmode(target=target,
-                              paging_on=self.paging_on,
-                              db=self.database).cmdloop()
+                TargetSubmode(
+                    target=target, paging_on=self.paging_on, db=self.database
+                ).cmdloop()
                 return True
             else:
                 print("Target {} not found".format(target_string))
@@ -283,6 +281,10 @@ class TargetSubmode(_BaseCmd):
         """Show Jam's view on why this target was rebuilt."""
         for chain in query.rebuild_chains(self.target):
             self._print_chain(chain)
+            timestamp_chain = query.timestamp_inheritance_chain(chain[-1][0])
+            if timestamp_chain is not None:
+                print("")
+                self._print_timestamp_chain(timestamp_chain)
 
     def do_show(self, arg):
         """Dump all available meta-data for this target."""
@@ -295,6 +297,10 @@ class TargetSubmode(_BaseCmd):
         self._print_targets(self.target.incs)
         print("included by:")
         self._print_targets(self.target.incs_rev)
+        print("newer than:")
+        self._print_targets(self.target.newer_than)
+        print("older than:")
+        self._print_targets(self.target.older_than)
         print("variables:")
         for key in self.target.variables:
             print("    {} = {}".format(key, self.target.variables[key]))
@@ -310,19 +316,22 @@ class TargetSubmode(_BaseCmd):
             print("higher ordered target in:")
             for rule_name in self.target.rule_call["other"]:
                 print("    {}".format(rule_name))
-        if (self.target.timestamp_chain is not None and
-                len(self.target.timestamp_chain) > 0):
-            print("timestamp:", self.target.timestamp_chain[-1].timestamp)
-            print("timestamp inherited from:")
-            self._print_targets(self.target.timestamp_chain)
-        else:
-            print("timestamp:", self.target.timestamp)
+        print("timestamp:", self.target.timestamp)
+        if self.target.inherits_timestamp_from is not None:
+            print("inherits timestamp from:", self.target.inherits_timestamp_from)
+        if self.target.bequeaths_timestamp_to:
+            print("bequeaths timestamp to:")
+            for inheritor in sorted(
+                self.target.bequeaths_timestamp_to, key=lambda tgt: tgt.name
+            ):
+                print("    {}".format(inheritor))
         print("binding:", self.target.binding)
-        print("rebuilt:", self.target.rebuilt)
-        if self.target.rebuilt:
-            print("    rebuilt reason:", self.target.rebuild_info.reason)
-            if self.target.rebuild_info.dep is not None:
-                print("    dependency:", self.target.rebuild_info.dep.name)
+        if self.target.fate is not None:
+            print("fate:", self.target.fate.value)
+        if self.target.rebuild_reason is not None:
+            print("rebuild reason:", self.target.rebuild_reason.value)
+            if self.target.rebuild_reason_target:
+                print("    due to:", self.target.rebuild_reason_target.name)
 
     def do_alternative_grists(self, arg):
         """
@@ -350,15 +359,29 @@ class TargetSubmode(_BaseCmd):
 
     def _print_chain(self, chain):
         """Print a sequence of targets forming a dependency chain."""
-        print(" -> ".join(target.name for target in chain))
+        links = []
+        for target, reason in chain:
+            if reason is None:
+                links.append(target.name)
+            else:
+                links.append(f"{target.name} ({reason.value})")
+        print("\n -> ".join(links))
+
+    def _print_timestamp_chain(self, chain):
+        """Print a sequence of targets forming a timestamp inheritance chain."""
+        print("{} inherits its timestamp from:".format(chain[0]))
+        links = (target.name for target in chain[1:])
+        print("\n -> ".join(links))
 
     def _print_targets(self, targets):
         """Print a sequence of targets."""
         for target in targets:
             print("    {}".format(target.name))
 
+
 class RuleSubmode(_BaseCmd):
     """ Submode to interact with a jam rule """
+
     def __init__(self, rule, *, paging_on, db=None):
         super().__init__(paging_on)
         self.rule = rule
@@ -375,9 +398,9 @@ class RuleSubmode(_BaseCmd):
         if len(target_list) == 0:
             print("No targets found")
         elif len(target_list) == 1:
-            TargetSubmode(target=target_list[0],
-                          paging_on=self.paging_on,
-                          db=self.database).cmdloop()
+            TargetSubmode(
+                target=target_list[0], paging_on=self.paging_on, db=self.database
+            ).cmdloop()
             return True
         else:
             target = None
@@ -385,9 +408,9 @@ class RuleSubmode(_BaseCmd):
                 if targ.name == target_string:
                     target = targ
             if target != None:
-                TargetSubmode(target=target,
-                              paging_on=self.paging_on,
-                              db=self.database).cmdloop()
+                TargetSubmode(
+                    target=target, paging_on=self.paging_on, db=self.database
+                ).cmdloop()
                 return True
             else:
                 print("Target {} not found".format(target_string))
@@ -406,8 +429,9 @@ class RuleSubmode(_BaseCmd):
         call = None
         while True:
             try:
-                choice = input("Choose call (range 0:{}): ".format(
-                    len(self.rule.calls) - 1))
+                choice = input(
+                    "Choose call (range 0:{}): ".format(len(self.rule.calls) - 1)
+                )
             except EOFError:
                 print("")
                 break
@@ -423,12 +447,12 @@ class RuleSubmode(_BaseCmd):
                 break
 
         if call is not None:
-            RuleCallSubmode(call=call,
-                            paging_on=self.paging_on).cmdloop()
+            RuleCallSubmode(call=call, paging_on=self.paging_on).cmdloop()
 
 
 class RuleCallSubmode(_BaseCmd):
     """ Submode to interact with a particular rule call """
+
     def __init__(self, call, *, paging_on, db=None):
         super().__init__(paging_on)
         self.call = call
@@ -476,4 +500,3 @@ class RuleCallSubmode(_BaseCmd):
             caller = caller.caller
         while len(stack) > 0:
             print(stack.pop())
-

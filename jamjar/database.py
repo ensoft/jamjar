@@ -1,21 +1,48 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # database.py - Database module
 #
 # November 2015, Phil Connell
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """Target database."""
 
-__all__ = (
-    "Database",
-    "Target",
-    "Rule",
-    "RuleCall"
-)
+__all__ = ("Database", "Fate", "Target", "Rule", "RuleCall")
 
 
 import collections
+import enum
 import re
+
+
+class Fate(enum.Enum):
+    """All possible target fates in jam."""
+
+    INIT = "init"
+    MAKING = "making"
+    STABLE = "stable"
+    NEWER = "newer"
+    TEMP = "temp"
+    TOUCHED = "touched"
+    MISSING = "missing"
+    NEEDTMP = "needtmp"
+    OLD = "old"
+    UPDATE = "update"
+    NOFIND = "nofind"
+    NOMAKE = "nomake"
+
+
+class RebuildReason(enum.Enum):
+    """All possible target fates in jam."""
+
+    TOUCHED = "mentioned with '-t'"
+    ACTION = "build action was updated"
+    MISSING = "it doesn't exist"
+    NEEDTMP = "it depends on newer"
+    OUTDATED = "it is older than"
+    UPDATED_INCLUDE_OF_INCLUDE = "inclusion of inclusion was updated"
+    UPDATED_INCLUDE_OF_DEPENDENCY = "inclusion of dependency was updated"
+    UPDATED_INCLUDE = "inclusion was updated"
+    UPDATED_DEPENDENCY = "dependency was updated"
 
 
 class Database:
@@ -30,9 +57,9 @@ class Database:
         self._rules = collections.OrderedDict()
 
     def __repr__(self):
-        return "{}({} targets, {} rules)".format(type(self).__name__,
-                                                 len(self._targets),
-                                                 len(self._rules))
+        return "{}({} targets, {} rules)".format(
+            type(self).__name__, len(self._targets), len(self._rules)
+        )
 
     def get_target(self, name):
         """Get a target with a given name, creating it if necessary."""
@@ -115,9 +142,21 @@ class Target:
 
         Set of targets that include this target.
 
-    .. attribute:: timestamp_chain
+    .. attribute:: binding
 
-        Sequence of targets that this target inherits its timestamp from.
+        Filesystem path for this target.
+
+    .. attribute:: fate
+
+        Fate of this target in the build.
+
+    .. attribute:: rebuild_reason
+
+        Why this target was rebuilt (or `None` if it wasn't).
+
+    .. attribute:: rebuild_reason_target
+
+        Related target, if applicable for the reason.
 
     .. attribute:: variables
 
@@ -135,11 +174,15 @@ class Target:
         self.deps_rev = set()
         self.incs = []
         self.incs_rev = set()
+        self.newer_than = []
+        self.older_than = set()
         self.timestamp = None
+        self.inherits_timestamp_from = None
+        self.bequeaths_timestamp_to = set()
         self.binding = None
-        self.rebuilt = False
-        self.rebuild_info = RebuildInfo()
-        self.timestamp_chain = None
+        self.fate = None
+        self.rebuild_reason = None
+        self.rebuild_reason_target = None
         self.variables = collections.OrderedDict()
         self.rule_calls = collections.OrderedDict()
 
@@ -157,25 +200,28 @@ class Target:
 
     def add_dependency(self, other):
         """Record the target 'other' as depended on by this target."""
-        # Dependencies may be parsed more than once, but only one copy allowed
         if self not in other.deps_rev:
             self.deps.append(other)
             other.deps_rev.add(self)
 
     def add_inclusion(self, other):
         """Record the target 'other' as included by this target."""
-        # Inclusions may be parsed more than once, but only one copy allowed
         if self not in other.incs_rev:
             self.incs.append(other)
             other.incs_rev.add(self)
+
+    def add_i_am_newer_than(self, older):
+        """Record that this target is newer than the target 'older'."""
+        if self not in older.older_than:
+            self.newer_than.append(older)
+            older.older_than.add(self)
 
     def brief_name(self):
         """Return a summarised version of this target's name."""
         # For now, just strip out most of the grist.
         grist, filename = self._grist_and_filename()
         if grist.count("!") > 1:
-            brief_grist = "{}!{}!...>".format(
-                *grist.split("!", maxsplit=2)[:2])
+            brief_grist = "{}!{}!...>".format(*grist.split("!", maxsplit=2)[:2])
         else:
             brief_grist = grist
         return brief_grist + filename
@@ -187,6 +233,11 @@ class Target:
     def grist(self):
         """Return this target's grist."""
         return self._grist_and_filename()[0]
+
+    @property
+    def rebuilt(self):
+        """`True` if this target was rebuilt, `False` otherwise."""
+        return self.rebuild_reason is not None
 
     def _grist_and_filename(self):
         """Split this target's name into a grist and filename."""
@@ -204,20 +255,26 @@ class Target:
         """Set the file binding for this target"""
         self.binding = binding
 
-    def set_rebuilt(self):
-        """Mark this target as having been rebuilt"""
-        self.rebuilt = True
+    def set_fate(self, fate):
+        """Set the fate of this target"""
+        # Might end up overwriting an old value if the given log contains debug
+        # from a couple of related runs of jam (e.g. in a multiphase build). So
+        # don't check...
+        self.fate = fate
 
-    def set_rebuilt_reason(self, reason):
-        """Set the rebuild reason of this target"""
-        self.rebuild_info.reason = reason
+    def set_rebuild_reason(self, reason, related_target=None):
+        """Set the rebuild reason for this target."""
+        self.rebuild_reason = reason
+        self.rebuild_reason_target = related_target
 
-    def set_rebuilt_dep(self, dep):
-        """ Mark this target as having been rebuilt due to dependency
-            being updated """
-        self.rebuilt = True
-        self.rebuild_info.reason = "Dependency updated"
-        self.rebuild_info.dep = dep
+    def set_inherits_timestamp_from(self, source):
+        """Record that this target inherits its timestamp from another."""
+        assert (
+            self.inherits_timestamp_from is None
+            or self.inherits_timestamp_from == source
+        )
+        self.inherits_timestamp_from = source
+        source.bequeaths_timestamp_to.add(self)
 
     def set_var_value(self, variable_name, values):
         """ Set the target specific variable 'variable_name' on this target to
@@ -229,19 +286,6 @@ class Target:
         if target_type not in self.rule_calls:
             self.rule_calls[target_type] = list()
         self.rule_calls[target_type].append(rule_call)
-
-
-class RebuildInfo:
-    """
-    Class containing information related to rebuilds
-    """
-    def __init__(self):
-        self.reason = None
-        self.dep = None
-
-    def __repr__(self):
-        return "{}(reason={}, dep={})".format(
-            type(self).__name__, self.reason, self.dep)
 
 
 class Rule:
@@ -257,6 +301,7 @@ class Rule:
         List of RuleCalls for this rule
 
     """
+
     def __init__(self, name):
         self.name = name
         self.calls = list()
@@ -288,6 +333,7 @@ class RuleCall:
         Each argument is a list of Target objects.
 
     """
+
     def __init__(self, rule, db, arg_list):
         self.rule = rule
         self.caller = None
@@ -353,4 +399,3 @@ class RuleCall:
         Get all elements passed as 3rd or higher arg
         """
         return self.args[2:]
-

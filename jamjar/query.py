@@ -1,8 +1,8 @@
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # query.py - Database query module
 #
 # November 2015, Phil Connell
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 """Target query functions."""
 
@@ -31,9 +31,7 @@ def deps(target):
     # If X includes Y, all dependencies of Y are dependencies of X. Also need
     # to remove duplicates.
     seen = set(target.deps)
-    inc_deps = (dep
-                for inc in target.incs
-                for dep in inc.deps)
+    inc_deps = (dep for inc in target.incs for dep in inc.deps)
     for dep in inc_deps:
         if dep not in seen:
             seen.add(dep)
@@ -88,7 +86,8 @@ def dep_chains(target, *, max_depth=0, include_target=None):
                 extended_chains.extend(
                     chain + [dep]
                     for dep in deps(chain[-1])
-                    if include_target is None or include_target(dep))
+                    if include_target is None or include_target(dep)
+                )
         chains = extended_chains
 
 
@@ -105,7 +104,7 @@ def rebuild_chains(target):
     while True:
         extended_chains = []
         for chain in chains:
-            for dep in deps_rebuilt(chain[-1]):
+            for dep in deps_rebuilt(chain[-1][0]):
                 extended_chains.append(chain + _basic_rebuild_chain(dep))
         if extended_chains:
             chains = extended_chains
@@ -118,14 +117,30 @@ def _basic_rebuild_chain(target):
     """
     Get a rebuild chain based purely on 'rebuild info' from Jam.
     """
-    chain = [target]
+    chain = [(target, None)]
     current = target
     while True:
-        current = current.rebuild_info.dep
+        reason = current.rebuild_reason
+        current = current.rebuild_reason_target
         if current is None:
             break
         else:
-            chain.append(current)
+            chain.append((current, reason))
+    return chain
+
+
+def timestamp_inheritance_chain(target):
+    """
+    Return the chain of targets that this target inherits its timestamp from.
+    """
+    if target.inherits_timestamp_from is None:
+        return None
+
+    chain = []
+    current = target
+    while current is not None:
+        chain.append(current)
+        current = current.inherits_timestamp_from
     return chain
 
 
@@ -159,4 +174,3 @@ def all_deps_df(target):
         current = stack.pop()
         yield current
         stack.extend(rev_deps(current))
-
