@@ -6,7 +6,7 @@
 
 """Parsers for Jam debug output."""
 
-__all__ = ("parse",)
+__all__ = ("parse", "DDParser", "DMParser", "DCParser")
 
 import pathlib
 
