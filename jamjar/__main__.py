@@ -7,6 +7,7 @@
 
 
 import argparse
+import pathlib
 import sys
 
 from . import database
@@ -22,20 +23,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Path to the jam log file to parse",
         required=True,
     )
-    parser.add_argument(
-        "-d",
-        "--parsers",
-        help="Jam debug options to run parsers for",
-        required=False,
-        default="dmc",
-    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str]) -> None:
     args = parse_args(argv)
     db = database.Database()
-    parsers.parse(db, args.logfile, args.parsers)
+    parsers.parse(db, pathlib.Path(args.logfile))
     cli_ui = ui.UI(db)
     cli_ui.cmdloop()
 

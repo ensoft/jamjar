@@ -25,26 +25,9 @@ class DCParser(BaseParser):
 
     # See DEBUG_CAUSES in jam for the relevant debug output.
 
-    _causes_fates = {
-        database.Fate.NEWER.value,
-        database.Fate.TEMP.value,
-        database.Fate.TOUCHED.value,
-        database.Fate.MISSING.value,
-    }
-
-    def parse_logfile(self, filename: str):
-        """Parse '-dc' debug output from the file at the given path."""
-        with open(filename, errors="ignore") as f:
-            self._parse(f)
-
-    def _parse(self, lines: Iterable[str]):
-        """
-        Parse debug from jam log output.
-
-        This is separated out from parse_logfile for testing purposes.
-
-        """
-        lines = collections.deque(lines)
+    def parse(self, logs: Iterable[str]) -> None:
+        """Parse '-dc' debug output from the given jam logs."""
+        lines = collections.deque(logs)
         while True:
             line = self._consume_line(lines)
             if line is None:
@@ -104,13 +87,20 @@ class DCParser(BaseParser):
         """
         lines.appendleft(line)
 
+    _causes_fates = {
+        database.Fate.NEWER.value,
+        database.Fate.TEMP.value,
+        database.Fate.TOUCHED.value,
+        database.Fate.MISSING.value,
+    }
+
     def _is_fate(self, line: str) -> bool:
         """Does the given line report a target's fate?"""
         return any(
             line.startswith(fate_name) for fate_name in self._causes_fates
         )
 
-    def _parse_fate_line(self, line) -> Optional[database.Target]:
+    def _parse_fate_line(self, line: str) -> Optional[database.Target]:
         """
         Attempt to parse a target's fate.
 
@@ -127,7 +117,7 @@ class DCParser(BaseParser):
             target.set_fate(fate)
             return target
 
-    def _parse_newer_than_line(self, line) -> Optional[database.Target]:
+    def _parse_newer_than_line(self, line: str) -> Optional[database.Target]:
         """
         Attempt to parse "newer than" information.
 
@@ -141,10 +131,12 @@ class DCParser(BaseParser):
             older_target_name = line.split(":", maxsplit=1)[1].strip()
             return self.db.get_target(older_target_name)
 
-    _rebuilding_target_regex = re.compile(r'[^"]+\s+"([^"]+)"')
-    _rebuilding_reason_regex = re.compile(r'([^"]+)\s+"([^"]+)"')
+    _rebuilding_target_regex = re.compile(r'[^"]+\s+"(?P<target>[^"]+)"')
+    _rebuilding_reason_regex = re.compile(
+        r'(?P<reason>[^"]+)\s+"(?P<target>[^"]+)"'
+    )
 
-    def _parse_rebuilding_line(self, line) -> bool:
+    def _parse_rebuilding_line(self, line: str) -> bool:
         """
         Attempt to parse "rebuilding" information.
 
@@ -169,15 +161,18 @@ class DCParser(BaseParser):
             match = self._rebuilding_target_regex.match(target_info)
             if match is None:
                 raise ValueError(f"Couldn't parse target from {target_info=}")
-            target = self.db.get_target(match.group(1))
+            target = self.db.get_target(match.group("target"))
 
             reason_info = reason_info.strip()
             # Don't need any trailing 'was updated' to disambiguate.
             reason_info = reason_info.removesuffix("was updated").strip()
+
+            reason: str
+            related_target: Optional[database.Target]
             match = self._rebuilding_reason_regex.match(reason_info)
             if match is not None:
-                reason = match.group(1)
-                related_target = self.db.get_target(match.group(2))
+                reason = match.group("reason")
+                related_target = self.db.get_target(match.group("target"))
             else:
                 reason = reason_info
                 related_target = None
@@ -222,7 +217,7 @@ class DCParser(BaseParser):
             return True
 
     _inherits_timestamp_regex = re.compile(
-        r'"([^"]+)"\s+inherits timestamp from\s+"([^"]+)"'
+        r'"(?P<target>[^"]+)"\s+inherits timestamp from\s+"(?P<source>[^"]+)"'
     )
 
     def _parse_inherits_timestamp_lines(
@@ -237,11 +232,14 @@ class DCParser(BaseParser):
         """
         while True:
             line = self._consume_line(lines)
+            if line is None:
+                return
+
             m = self._inherits_timestamp_regex.search(line)
             if m is None:
                 self._regurgitate_line(lines, line)
                 return
 
-            target = self.db.get_target(m.group(1))
-            source = self.db.get_target(m.group(2))
+            target = self.db.get_target(m.group("target"))
+            source = self.db.get_target(m.group("source"))
             target.set_inherits_timestamp_from(source)

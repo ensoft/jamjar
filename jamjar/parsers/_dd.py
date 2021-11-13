@@ -12,53 +12,42 @@
 __all__ = ("DDParser",)
 
 
+import re
+from typing import Iterable
+
 from ._base import BaseParser
 
 
 class DDParser(BaseParser):
-    def parse_logfile(self, filename, debug_flag=False):
-        """
-        Function to parse log files with '-dd' debug output.
+    """Parser for '-dd' debug output."""
 
-        Currently can read:
+    def parse(self, logs: Iterable[str]) -> None:
+        """Parse '-dd' debug output from the given jam logs."""
+        for line in logs:
+            self._parse_line(line)
 
-        Depends x:y
-        Includes x:y"""
+    # One of:
+    #   Depends "<grist>file.name" : "<grist>other.name" ;
+    #   Includes "<grist>file.name" : "<grist>other.name" ;
+    _dependency_regex = re.compile(
+        r'\s*(?:Depends|Includes)\s+"(?P<from>[^"]+)"\s+:\s+"(?P<onto>[^"]+)"'
+    )
 
-        with open(filename, errors="ignore") as f:
-            for line in f:
-                # Depending on the first word, add the relevant information to the database
-                #
-                # x depends on y
-                # x includes y
-
-                first_word = line.split(" ", 1)[0]
-
-                if first_word == "Depends" or first_word == "Includes":
-                    x_y = line.split(" ", 1)[1]
-                    x_garbage = x_y.split('" : "', 1)[
-                        0
-                    ]  # includes the prefix '\"' which needs to be removed
-                    y_garbage = x_y.split('" : "', 1)[
-                        1
-                    ]  # includes an ending '\" ;' which needs to be removed
-
-                    x = x_garbage.replace('"', "")
-                    y = y_garbage.replace('" ;', "").replace("\n", "")
-
-                    # Debug
-                    if debug_flag == True:
-                        if first_word == "Depends":
-                            print(x, "depends on", y)
-                        elif first_word == "Includes":
-                            print(x, "includes", y)
-
-                    # Add to the database
-                    x_target = self.db.get_target(x)
-                    y_target = self.db.get_target(y)
-
-                    if first_word == "Depends":
-                        x_target.add_dependency(y_target)
-                    elif first_word == "Includes":
-                        x_target.add_inclusion(y_target)
-        return None
+    def _parse_line(self, line: str) -> None:
+        """Handle a single line, updating the database if necessary."""
+        is_depends = line.startswith("Depends ")
+        is_includes = line.startswith("Includes ")
+        if is_depends or is_includes:
+            match = self._dependency_regex.match(line)
+            if match is None:
+                raise ValueError(
+                    f"Expected to get dependency information from {line!r} "
+                    f"but failed to match the expected format"
+                )
+            from_target = self.db.get_target(match.group("from"))
+            onto_target = self.db.get_target(match.group("onto"))
+            if is_depends:
+                from_target.add_dependency(onto_target)
+            else:
+                assert is_includes
+                from_target.add_inclusion(onto_target)

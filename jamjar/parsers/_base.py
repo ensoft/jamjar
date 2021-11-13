@@ -10,6 +10,10 @@
 
 __all__ = ("BaseParser",)
 
+from typing import Iterable
+
+from .. import database
+
 
 class BaseParser:
     """
@@ -21,9 +25,9 @@ class BaseParser:
 
     """
 
-    def __init__(self, db):
+    def __init__(self, db: database.Database) -> None:
         self.db = db
 
-    def parse_logfile(self, filename):
-        """Parse the supplied Jam log file, updating the contents of db with
-        the parsed information"""
+    def parse(self, logs: Iterable[str]) -> None:
+        """Update the database based on parsing the given jam log file."""
+        raise NotImplementedError

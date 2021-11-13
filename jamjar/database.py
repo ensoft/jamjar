@@ -12,6 +12,7 @@ __all__ = ("Database", "Fate", "Target", "Rule", "RuleCall")
 
 
 import collections
+import datetime
 import enum
 import re
 
@@ -156,7 +157,7 @@ class Target:
         self.incs_rev: set[Target] = set()
         self.newer_than: list[Target] = []
         self.older_than: set[Target] = set()
-        self.timestamp: Optional[str] = None
+        self.timestamp: Optional[datetime.datetime] = None
         self.inherits_timestamp_from: Optional[Target] = None
         self.bequeaths_timestamp_to: set[Target] = set()
         self.binding: Optional[str] = None
@@ -227,7 +228,7 @@ class Target:
         else:
             return "", self.name
 
-    def set_timestamp(self, timestamp: str) -> None:
+    def set_timestamp(self, timestamp: datetime.datetime) -> None:
         """Set the updated timestamp on this target."""
         self.timestamp = timestamp
 
@@ -243,7 +244,7 @@ class Target:
         self.fate = fate
 
     def set_rebuild_reason(
-        self, reason: RebuildReason, *, related_target: Optional[Target] = None
+        self, reason: RebuildReason, related_target: Optional[Target] = None
     ) -> None:
         """Set the rebuild reason for this target."""
         self.rebuild_reason = reason
