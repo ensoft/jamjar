@@ -26,4 +26,4 @@ class BaseParser:
 
     def parse_logfile(self, filename):
         """Parse the supplied Jam log file, updating the contents of db with
-           the parsed information"""
+        the parsed information"""

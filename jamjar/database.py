@@ -81,7 +81,7 @@ class Database:
 
     def find_rebuilt_targets(self, name_regex):
         """Iterator that yields all targets whose name matches a regex and
-           have their rebuilt flag set to True."""
+        have their rebuilt flag set to True."""
         for target in self.find_targets(name_regex):
             if target.rebuilt:
                 yield target
@@ -221,7 +221,9 @@ class Target:
         # For now, just strip out most of the grist.
         grist, filename = self._grist_and_filename()
         if grist.count("!") > 1:
-            brief_grist = "{}!{}!...>".format(*grist.split("!", maxsplit=2)[:2])
+            brief_grist = "{}!{}!...>".format(
+                *grist.split("!", maxsplit=2)[:2]
+            )
         else:
             brief_grist = grist
         return brief_grist + filename
@@ -277,12 +279,12 @@ class Target:
         source.bequeaths_timestamp_to.add(self)
 
     def set_var_value(self, variable_name, values):
-        """ Set the target specific variable 'variable_name' on this target to
-            'values[]' """
+        """Set the target specific variable 'variable_name' on this target to
+        'values[]'"""
         self.variables[variable_name] = values
 
     def add_rule_call(self, target_type, rule_call):
-        """ Add the rule call to the relevant list for this target """
+        """Add the rule call to the relevant list for this target"""
         if target_type not in self.rule_calls:
             self.rule_calls[target_type] = list()
         self.rule_calls[target_type].append(rule_call)
@@ -357,7 +359,9 @@ class RuleCall:
 
     def __repr__(self):
         if len(self.args[0]) > 1:
-            return "{} {} ...".format(self.rule.name, self.args[0][0].brief_name())
+            return "{} {} ...".format(
+                self.rule.name, self.args[0][0].brief_name()
+            )
         if len(self.args[0]) == 1:
             return "{} {}".format(self.rule.name, self.args[0][0].brief_name())
         else:

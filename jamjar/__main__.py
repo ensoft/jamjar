@@ -17,7 +17,10 @@ from . import ui
 def parse_args(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-f", "--logfile", help="Path to the jam log file to parse", required=True
+        "-f",
+        "--logfile",
+        help="Path to the jam log file to parse",
+        required=True,
     )
     parser.add_argument(
         "-d",

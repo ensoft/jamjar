@@ -93,7 +93,9 @@ class DCParser(BaseParser):
         else:
             return line.strip()
 
-    def _regurgitate_line(self, lines: collections.deque[str], line: str) -> None:
+    def _regurgitate_line(
+        self, lines: collections.deque[str], line: str
+    ) -> None:
         """
         Express regret for eating a line,
 
@@ -104,7 +106,9 @@ class DCParser(BaseParser):
 
     def _is_fate(self, line: str) -> bool:
         """Does the given line report a target's fate?"""
-        return any(line.startswith(fate_name) for fate_name in self._causes_fates)
+        return any(
+            line.startswith(fate_name) for fate_name in self._causes_fates
+        )
 
     def _parse_fate_line(self, line) -> Optional[database.Target]:
         """
@@ -194,11 +198,13 @@ class DCParser(BaseParser):
                 )
             elif reason == "inclusion of inclusion":  # ...was updated
                 target.set_rebuild_reason(
-                    database.RebuildReason.UPDATED_INCLUDE_OF_INCLUDE, related_target
+                    database.RebuildReason.UPDATED_INCLUDE_OF_INCLUDE,
+                    related_target,
                 )
             elif reason == "inclusion of dependency":  # ...was updated
                 target.set_rebuild_reason(
-                    database.RebuildReason.UPDATED_INCLUDE_OF_DEPENDENCY, related_target
+                    database.RebuildReason.UPDATED_INCLUDE_OF_DEPENDENCY,
+                    related_target,
                 )
             elif reason == "inclusion":  # ...was updated
                 target.set_rebuild_reason(
@@ -209,7 +215,9 @@ class DCParser(BaseParser):
                     database.RebuildReason.UPDATED_DEPENDENCY, related_target
                 )
             else:
-                raise NotImplementedError(f"{reason=}, {target=}, {related_target=}")
+                raise NotImplementedError(
+                    f"{reason=}, {target=}, {related_target=}"
+                )
 
             return True
 
@@ -217,7 +225,9 @@ class DCParser(BaseParser):
         r'"([^"]+)"\s+inherits timestamp from\s+"([^"]+)"'
     )
 
-    def _parse_inherits_timestamp_lines(self, lines: collections.deque[str]) -> None:
+    def _parse_inherits_timestamp_lines(
+        self, lines: collections.deque[str]
+    ) -> None:
         """
         Parse a series of timestamp inheritance lines.
 

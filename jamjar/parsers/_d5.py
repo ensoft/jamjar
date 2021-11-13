@@ -77,7 +77,7 @@ class D5Parser(BaseParser):
             return
 
     def parse_decl_line(self, words):
-        """ parsing ">>.. rule RuleName" """
+        """parsing ">>.. rule RuleName" """
         if words[1] == "rule" and len(words) == 3:
             rule_name = words[2]
             self.db.declare_rule(rule_name)
@@ -100,7 +100,9 @@ class D5Parser(BaseParser):
             target_names = words[4 : words.index("=")]
             for target_name in target_names:
                 targ = self.db.get_target(target_name)
-                targ.set_var_value(variable_name, words[words.index("=") + 1 :])
+                targ.set_var_value(
+                    variable_name, words[words.index("=") + 1 :]
+                )
             return True
         else:
             return False
@@ -144,7 +146,7 @@ class D5Parser(BaseParser):
             return False
 
     def parse_call_line(self, words):
-        """ parsing ">>.. RuleName {args...}" """
+        """parsing ">>.. RuleName {args...}" """
         if self.db.get_rule(words[1]) is not None:
             rule_object = self.db.get_rule(words[1])
             call = rule_object.add_call(self.db, words[2:])

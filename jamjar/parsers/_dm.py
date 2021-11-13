@@ -44,7 +44,7 @@ class DMParser(BaseParser):
 
     def parse_logfile(self, filename):
         """Open the supplied logfile and parse any '-dm' debug output into
-           the DB"""
+        the DB"""
         # Open the file
         try:
             f = open(filename, errors="ignore")
@@ -60,7 +60,7 @@ class DMParser(BaseParser):
 
     def parse_line(self, line):
         """Read the supplied line from a jam debug log file and parse it
-           for -dm debug to update the DB with."""
+        for -dm debug to update the DB with."""
 
         # The output we are interested in takes one of the following forms:
         # make -- <target>

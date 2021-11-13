@@ -29,7 +29,9 @@ class DdParserTest(unittest.TestCase):
 
     def test_parse_file(self):
         """Test the file parsing."""
-        self._dd_parser.parse_logfile(os.path.join(self._logdir, "example_dd.log"))
+        self._dd_parser.parse_logfile(
+            os.path.join(self._logdir, "example_dd.log")
+        )
 
         # Check the expected targets are in the db
         targets = list(self._db.find_targets("p"))

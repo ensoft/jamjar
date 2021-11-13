@@ -23,7 +23,7 @@ class DDParser(BaseParser):
         Currently can read:
 
         Depends x:y
-        Includes x:y """
+        Includes x:y"""
 
         with open(filename, errors="ignore") as f:
             for line in f:

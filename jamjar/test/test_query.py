@@ -112,13 +112,33 @@ class DependencyTest(unittest.TestCase):
         """Test the depth-first all_deps function."""
         deps = query.all_deps_df(self._targets["x"])
         self._check_result(
-            deps, ["y", "d", "f", "r", "e", "f", "e", "f", "z", "d", "f", "e", "f",]
+            deps,
+            [
+                "y",
+                "d",
+                "f",
+                "r",
+                "e",
+                "f",
+                "e",
+                "f",
+                "z",
+                "d",
+                "f",
+                "e",
+                "f",
+            ],
         )
 
     def test_dep_chains_basic(self):
         """Test the dep_chains function for one chain.""",
         chains = query.dep_chains(self._targets["c"])
-        self._check_chains_result(chains, [["c", "e", "f"],])
+        self._check_chains_result(
+            chains,
+            [
+                ["c", "e", "f"],
+            ],
+        )
 
     def test_dep_chains_deeper(self):
         """Test the dep_chains function for multiple chains."""
@@ -149,7 +169,13 @@ class DependencyTest(unittest.TestCase):
         )
 
         chains = query.dep_chains(self._targets["x"], max_depth=2)
-        self._check_chains_result(chains, [["x", "y"], ["x", "z"],])
+        self._check_chains_result(
+            chains,
+            [
+                ["x", "y"],
+                ["x", "z"],
+            ],
+        )
 
     # --------------------------------------------------------------------------
     # Helpers
@@ -157,7 +183,9 @@ class DependencyTest(unittest.TestCase):
 
     def _check_result(self, got_targets, expected_names):
         """Check that a sequence of targets has the expected names."""
-        expected_targets = [self._db.get_target(name) for name in expected_names]
+        expected_targets = [
+            self._db.get_target(name) for name in expected_names
+        ]
         self.assertEqual(list(got_targets), expected_targets)
 
     def _check_chains_result(self, got_chains, expected_name_chains):

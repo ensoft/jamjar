@@ -65,7 +65,7 @@ class _BaseCmd(cmd.Cmd):
         self.out = None
 
     def do_paging_off(self, arg):
-        """"Turn paging off"""
+        """ "Turn paging off"""
         self.turn_paging_off()
 
     def do_paging_on(self, arg):
@@ -95,7 +95,9 @@ class _BaseCmd(cmd.Cmd):
             "none": "\x1b[0m",
         }
         if sys.stdout.isatty():
-            return "({}{}{}) ".format(escapes[color], prompt_string, escapes["none"])
+            return "({}{}{}) ".format(
+                escapes[color], prompt_string, escapes["none"]
+            )
         else:
             return "({}) ".format(prompt_string)
 
@@ -119,7 +121,9 @@ class UI(_BaseCmd):
             print("No targets found")
         elif len(target_list) == 1:
             TargetSubmode(
-                target=target_list[0], paging_on=self.paging_on, db=self.database
+                target=target_list[0],
+                paging_on=self.paging_on,
+                db=self.database,
             ).cmdloop()
         else:
             target = self._target_selection(target_list)
@@ -131,7 +135,9 @@ class UI(_BaseCmd):
     def do_rebuilt_targets(self, target_string):
         """Get information about targets that were rebuilt matching a regex."""
         try:
-            target_list = list(self.database.find_rebuilt_targets(target_string))
+            target_list = list(
+                self.database.find_rebuilt_targets(target_string)
+            )
         except ValueError as e:
             print("Invalid target string: {}".format(str(e)))
             return
@@ -139,7 +145,9 @@ class UI(_BaseCmd):
             print("No targets found")
         elif len(target_list) == 1:
             TargetSubmode(
-                target=target_list[0], paging_on=self.paging_on, db=self.database
+                target=target_list[0],
+                paging_on=self.paging_on,
+                db=self.database,
             ).cmdloop()
         else:
             target = self._target_selection(target_list)
@@ -156,7 +164,9 @@ class UI(_BaseCmd):
         target = None
         while True:
             try:
-                choice = input("Choose target (range 0:{}): ".format(len(targets) - 1))
+                choice = input(
+                    "Choose target (range 0:{}): ".format(len(targets) - 1)
+                )
             except EOFError:
                 print("")
                 break
@@ -200,7 +210,9 @@ class UI(_BaseCmd):
         rule = None
         while True:
             try:
-                choice = input("Choose rule (range 0:{}): ".format(len(rules) - 1))
+                choice = input(
+                    "Choose rule (range 0:{}): ".format(len(rules) - 1)
+                )
             except EOFError:
                 print("")
                 break
@@ -218,7 +230,7 @@ class UI(_BaseCmd):
 
 
 class TargetSubmode(_BaseCmd):
-    """ Submode to interact with a particular target """
+    """Submode to interact with a particular target"""
 
     def __init__(self, target, *, paging_on, db=None):
         super().__init__(paging_on)
@@ -237,7 +249,9 @@ class TargetSubmode(_BaseCmd):
             print("No targets found")
         elif len(target_list) == 1:
             TargetSubmode(
-                target=target_list[0], paging_on=self.paging_on, db=self.database
+                target=target_list[0],
+                paging_on=self.paging_on,
+                db=self.database,
             ).cmdloop()
             return True
         else:
@@ -318,7 +332,9 @@ class TargetSubmode(_BaseCmd):
                 print("    {}".format(rule_name))
         print("timestamp:", self.target.timestamp)
         if self.target.inherits_timestamp_from is not None:
-            print("inherits timestamp from:", self.target.inherits_timestamp_from)
+            print(
+                "inherits timestamp from:", self.target.inherits_timestamp_from
+            )
         if self.target.bequeaths_timestamp_to:
             print("bequeaths timestamp to:")
             for inheritor in sorted(
@@ -380,7 +396,7 @@ class TargetSubmode(_BaseCmd):
 
 
 class RuleSubmode(_BaseCmd):
-    """ Submode to interact with a jam rule """
+    """Submode to interact with a jam rule"""
 
     def __init__(self, rule, *, paging_on, db=None):
         super().__init__(paging_on)
@@ -399,7 +415,9 @@ class RuleSubmode(_BaseCmd):
             print("No targets found")
         elif len(target_list) == 1:
             TargetSubmode(
-                target=target_list[0], paging_on=self.paging_on, db=self.database
+                target=target_list[0],
+                paging_on=self.paging_on,
+                db=self.database,
             ).cmdloop()
             return True
         else:
@@ -430,7 +448,9 @@ class RuleSubmode(_BaseCmd):
         while True:
             try:
                 choice = input(
-                    "Choose call (range 0:{}): ".format(len(self.rule.calls) - 1)
+                    "Choose call (range 0:{}): ".format(
+                        len(self.rule.calls) - 1
+                    )
                 )
             except EOFError:
                 print("")
@@ -451,7 +471,7 @@ class RuleSubmode(_BaseCmd):
 
 
 class RuleCallSubmode(_BaseCmd):
-    """ Submode to interact with a particular rule call """
+    """Submode to interact with a particular rule call"""
 
     def __init__(self, call, *, paging_on, db=None):
         super().__init__(paging_on)

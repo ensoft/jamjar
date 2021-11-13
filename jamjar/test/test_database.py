@@ -126,7 +126,9 @@ class TargetTest(unittest.TestCase):
     def test_brief_name(self):
         """Test the brief name method."""
         tgt = database.Target("<blah!grist!ablah!bblah>some_filename xyz.foo")
-        self.assertEqual(tgt.brief_name(), "<blah!grist!...>some_filename xyz.foo")
+        self.assertEqual(
+            tgt.brief_name(), "<blah!grist!...>some_filename xyz.foo"
+        )
 
     # --------------------------------------------------------------------------
     # Helpers
