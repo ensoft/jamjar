@@ -4,20 +4,30 @@
 # November 2015, Phil Connell
 # ------------------------------------------------------------------------------
 
-"""Target query functions."""
+"""Higher-level query functions (vs. raw database reads)."""
 
 __all__ = (
+    "Chain",
+    "RebuildChain",
     "deps",
-    "dep_chains",
-    "all_deps_bf",
-    "all_deps_df",
+    "deps_rebuilt",
+    "rebuild_chains",
+    "timestamp_inheritance_chain",
 )
 
 
 import collections
+from typing import Callable, Iterator, Optional
+
+from . import database
 
 
-def deps(target):
+Chain = list[database.Target]
+
+RebuildChain = list[tuple[database.Target, Optional[database.RebuildReason]]]
+
+
+def deps(target: database.Target) -> Iterator[database.Target]:
     """
     Iterator that yields immediate dependencies of a target.
 
@@ -38,7 +48,7 @@ def deps(target):
             yield dep
 
 
-def deps_rebuilt(target):
+def deps_rebuilt(target: database.Target) -> Iterator[database.Target]:
     """
     Iterator that yields immediate rebuilt dependencies of a target.
     """
@@ -47,60 +57,11 @@ def deps_rebuilt(target):
             yield dep
 
 
-def dep_chains(target, *, max_depth=0, include_target=None):
-    """
-    Iterator that yields dependency chains for a target.
-
-    In each list:
-
-    - The first target is the given target.
-    - The target at index N depends on the target at index N + 1.
-    - The final target doesn't depend on anything.
-
-    The order that chains are produced in is arbitrary.
-
-    :param max_depth:
-        Terminate all chains at this depth, rather than going as deep as
-        possible.
-
-    :param include_target:
-        Function to determine whether chains including a particular output may
-        be included in this function's output.
-
-        This is passed a target and should return a bool:
-
-        - True indicates that chains involving the target *may* be returned.
-        - False indicates that chains involving the target *must not* be
-          returned.
-
-    """
-    chains = []
-    chains.append([target])
-    while chains:
-        extended_chains = []
-        for chain in chains:
-            next_deps = list(deps(chain[-1]))
-            if not next_deps or (max_depth and len(chain) == max_depth):
-                yield chain
-            else:
-                extended_chains.extend(
-                    chain + [dep]
-                    for dep in deps(chain[-1])
-                    if include_target is None or include_target(dep)
-                )
-        chains = extended_chains
-
-
-def dep_chains_rebuilt(target):
-    """Iterator that yields dependency chains that have (all) been rebuilt."""
-    yield from dep_chains(target, include_target=lambda target: target.rebuilt)
-
-
-def rebuild_chains(target):
+def rebuild_chains(target: database.Target) -> list[RebuildChain]:
     """
     Return the chains of targets that caused a given target to be rebuilt.
     """
-    chains = [_basic_rebuild_chain(target)]
+    chains: list[RebuildChain] = [_basic_rebuild_chain(target)]
     while True:
         extended_chains = []
         for chain in chains:
@@ -113,12 +74,13 @@ def rebuild_chains(target):
     return chains
 
 
-def _basic_rebuild_chain(target):
+def _basic_rebuild_chain(target: database.Target) -> RebuildChain:
     """
     Get a rebuild chain based purely on 'rebuild info' from Jam.
     """
-    chain = [(target, None)]
-    current = target
+    chain: RebuildChain = [(target, None)]
+    current: Optional[database.Target] = target
+    assert current is not None
     while True:
         reason = current.rebuild_reason
         current = current.rebuild_reason_target
@@ -129,48 +91,16 @@ def _basic_rebuild_chain(target):
     return chain
 
 
-def timestamp_inheritance_chain(target):
+def timestamp_inheritance_chain(target: database.Target) -> Optional[Chain]:
     """
     Return the chain of targets that this target inherits its timestamp from.
     """
     if target.inherits_timestamp_from is None:
         return None
 
-    chain = []
-    current = target
+    chain: Chain = []
+    current: Optional[database.Target] = target
     while current is not None:
         chain.append(current)
         current = current.inherits_timestamp_from
     return chain
-
-
-def all_deps_bf(target):
-    """
-    Iterator that yields all dependencies of a target, breadth-first.
-
-    This function may yield the same target more than once.
-
-    """
-    queue = collections.deque()
-    queue.extend(deps(target))
-    while queue:
-        current = queue.popleft()
-        yield current
-        queue.extend(deps(current))
-
-
-def all_deps_df(target):
-    """
-    Iterator that yields all dependencies of a target, depth-first.
-
-    This function may yield the same target more than once.
-
-    """
-    stack = []
-    # Make sure we'll yield dependencies in Jam definition order!
-    rev_deps = lambda target: reversed(list(deps(target)))
-    stack.extend(rev_deps(target))
-    while stack:
-        current = stack.pop()
-        yield current
-        stack.extend(rev_deps(current))

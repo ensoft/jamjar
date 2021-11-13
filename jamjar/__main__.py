@@ -14,7 +14,7 @@ from . import parsers
 from . import ui
 
 
-def parse_args(argv):
+def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-f",
@@ -32,7 +32,7 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def main(argv):
+def main(argv: list[str]) -> None:
     args = parse_args(argv)
     db = database.Database()
     parsers.parse(db, args.logfile, args.parsers)
